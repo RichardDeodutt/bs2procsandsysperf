@@ -2,7 +2,7 @@
 
 #Richard Deodutt
 #08/06/2022
-#This script is meant to monitor processes and system performance. It will be able to show processes using over a certain ammount of system memory and allow the user to terminate them. 
+#This script is meant to monitor processes and system performance. It will be able to show the system's state and processes using over a certain ammount of system memory and allow the user to terminate them. 
 #Script issues go here
 
 
@@ -25,13 +25,17 @@ CodeYellow=$((50))
 #25% and below
 CodeRed=$((25))
 
+ThresholdPercent=$((20))
+AdjustedThresholdPercent=$((20))
+
 #State of the system's memory
 TotalSystemMemoryKB=0
 TotalAvailableSystemMemoryKB=0
 PercentageTotalAvailableSystemMemory=0
 PercentageTotalUsedSystemMemory=0
+Code="No Color"
 ColorCode=$NC
-Multiplier=1
+Multiplier=$((1))
 
 #Print to the console in colored text
 ColorPrint(){
@@ -71,41 +75,76 @@ UpdateSystemMemoryState(){
     TotalSystemMemoryKB=100
     #Total available memory for the system in KB numbers only
     #TotalAvailableSystemMemoryKB=$(echo $(grep MemAvailable: /proc/meminfo | sed 's/[^0-9]*//g'))
-    TotalAvailableSystemMemoryKB=70
+    TotalAvailableSystemMemoryKB=100
     #Percentage of total available memory for the system rounded
     PercentageTotalAvailableSystemMemory=$(printf '%.*f\n' 1 $(echo "$TotalAvailableSystemMemoryKB / $TotalSystemMemoryKB * 100" | bc -l))
     #Percentage of total used memory for the system rounded
     PercentageTotalUsedSystemMemory=$(printf '%.*f\n' 1 $(echo "100 - $PercentageTotalAvailableSystemMemory" | bc -l))
     #Sets color code and multiplier based on set thresholds
+    #Depending on the color code it will change the threshold for showing processes to be selected for termination.
     if [ $(echo $PercentageTotalAvailableSystemMemory | cut -d"." -f 1) -le $CodeRed ]; then
         #Code red low ammount of memory free
         ColorCode=$Red
-        Multiplier=".25"
+        Code="Red"
+        #Multiplier as a decimal of code red
+        Multiplier=$(printf '%.*f\n' 2 $(echo "$CodeRed / 100" | bc -l))
     elif [ $(echo $PercentageTotalAvailableSystemMemory | cut -d"." -f 1) -le $CodeYellow ]; then
         #Code yellow mid ammount of memory free
         ColorCode=$Yellow
-        Multiplier=".50"
+        Code="Yellow"
+        #Multiplier as a decimal of code yellow
+        Multiplier=$(printf '%.*f\n' 2 $(echo "$CodeYellow / 100" | bc -l))
     elif [ $(echo $PercentageTotalAvailableSystemMemory | cut -d"." -f 1) -le $CodeGreen ]; then
         #Code green high ammount of memory free
         ColorCode=$Green
-        Multiplier="1"
+        Code="Green"
+        #Multiplier as a decimal of code green
+        Multiplier=$(printf '%.*f\n' 2 $(echo "$CodeGreen / 100" | bc -l))
     else
         #Code error something is wrong so use defaults
         ColorCode=$NC
-        Multiplier="1"
+        Code="No-Color"
+        #Multiplier as a decimal 100%
+        Multiplier=$((1))
     fi
+    #Adjust the threshold percent based on the state of the system
+    AdjustedThresholdPercent=$(printf '%.*f\n' 1 $(echo "$ThresholdPercent * $Multiplier" | bc -l))
 }
 
 #Function to print/echo the last state of the systems memory stored
 PrintSystemMemoryStatus(){
     #Total memory for the system in a human readable format
-    echo "Total System Memory: "$(KBtoHumanReadable $TotalSystemMemoryKB)
+    echo "Total System Memory: $(KBtoHumanReadable $TotalSystemMemoryKB)"
     #Total available memory for the system in a human readable format
-    echo "Total Available System Memory: "$(KBtoHumanReadable $TotalAvailableSystemMemoryKB)
+    echo "Total Available System Memory: $(KBtoHumanReadable $TotalAvailableSystemMemoryKB)"
     #Percentage of total available memory for the system rounded and color coded
-    echo "Percent of Available Memory: $(ColorPrint $PercentageTotalAvailableSystemMemory ${ColorCode}) %"
+    echo "Percent of Available Memory: $(ColorPrint $PercentageTotalAvailableSystemMemory $ColorCode) %"
     #Percentage of total used memory for the system rounded and color coded
-    echo "Percent of Used Memory: $(ColorPrint $PercentageTotalUsedSystemMemory ${ColorCode}) %"
+    echo "Percent of Used Memory: $(ColorPrint $PercentageTotalUsedSystemMemory $ColorCode) %"
+    #The state of the system explained in a color code, the multiplier used, the original threshold percent and adjusted threshold percent used to select which processes are using too much memory
+    echo "Code Color: $(ColorPrint $Code $ColorCode) | Multiplier: $Multiplier | Threshold Percent: $ThresholdPercent % | Adjusted Threshold Percent: $AdjustedThresholdPercent %"
+}
+
+SelectTerminations(){
+    Options=$(ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | (sed -u 1q; awk -v TP=$AdjustedThresholdPercent '$3 > TP') | nl -v 0 | sed -e '0,/0/ s/0/#/')
+    OptionsCount=$(($(echo "$Options" | wc -l) - 1))
+    if [ $OptionsCount -eq $((0)) ]; then
+        echo "No Options"
+        return
+    fi
+    echo $OptionsCount
+    echo
+    echo "Process List Below: "
+    echo
+    echo "$Options"
+    echo
+    echo "Select processes using the number on the # column on the leftmost side to terminate or enter q to quit"
+    echo
+    read -p "Term #> " Selection
+    if [[ $Selection == "q" ]]; then
+        echo "Quiting"
+        exit 0
+    fi
 }
 
 #Checking the system memory situation
@@ -116,10 +155,21 @@ UpdateSystemMemoryState
 #Print the system memory state
 PrintSystemMemoryStatus
 
-depending on code it will change the threshold for showing processes to be selected for termination.
-
-
-
 #Check the system processes
+SelectTerminations
 
 
+
+
+
+#ps aux | (sed -u 1q; sort -rnk +4) | nl -v 0 | sed -e '0,/0/ s/0/#/'
+
+#ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem
+
+#ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | awk '$3 > 0'
+
+
+
+#ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | (sed -u 1q; awk -v TP=$AdjustedThresholdPercent '$3 > TP') | nl -v 0 | sed -e '0,/0/ s/0/#/'
+
+#ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | (sed -u 1q; awk -v TP=$ThresholdPercent '$3 > $TP') | nl -v 0 | sed -e '0,/0/ s/0/#/'
