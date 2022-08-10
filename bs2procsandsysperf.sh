@@ -6,11 +6,15 @@
 #Script issues go here
 
 
-#Color Output
+
+#Units
+BinaryKilo=$((1024))
+
+#Color output
 Red='\033[0;31m'
 Green='\033[0;32m'
 Yellow='\033[0;33m'
-#No Color Output
+#No color output
 NC='\033[0m'
 
 
@@ -21,14 +25,39 @@ TotalSystemMemorykB=$(echo $(grep MemTotal /proc/meminfo | sed 's/[^0-9]*//g'))
 TotalAvailableSystemMemorykB=$(echo $(grep MemAvailable: /proc/meminfo | sed 's/[^0-9]*//g'))
 
 #Percentage of total available memory for the system
-PercentageTotalAvailableSystemMemory=$(echo "$TotalAvailableSystemMemorykB / $TotalSystemMemorykB * 100" | bc -l | cut -c "1-4")
+PercentageTotalAvailableSystemMemory=$(printf '%.*f\n' 1 $(echo "$TotalAvailableSystemMemorykB / $TotalSystemMemorykB * 100" | bc -l))
+
+#Percentage of total used memory for the system
+PercentageTotalUsedSystemMemory=$(printf '%.*f\n' 1 $(echo "100 - $PercentageTotalAvailableSystemMemory" | bc -l))
+
+KBtohumanreadable(){
+    Kilobytes=$1
+    Bytes=$(echo "$Kilobytes * $BinaryKilo" | bc -l)
+    if [ $Kilobytes -ge $BinaryKilo ]; then
+        Megabytes=$(echo "$Bytes / ($BinaryKilo ^ 2)" | bc -l)
+        if [ $(printf '%.*f\n' 0 $Megabytes) -ge $BinaryKilo ]; then
+            Gigabytes=$(echo "$Bytes / ($BinaryKilo ^ 3)" | bc -l)
+            printf '%.*f GB\n' 2 $Gigabytes
+        else
+            printf '%.*f MB\n' 2 $Megabytes
+        fi
+    else
+        printf '%.*f KB\n' 2 $Kilobytes
+    fi
+}
+
+echo "Total System Memory: "$(KBtohumanreadable $TotalSystemMemorykB)
+
+echo "Total Available System Memory: "$(KBtohumanreadable $TotalAvailableSystemMemorykB)
+
+echo "Percent of Available Memory: $PercentageTotalAvailableSystemMemory %"
+
+echo "Percent of Used Memory: $PercentageTotalUsedSystemMemory %"
 
 
 
 #Show the system memory situation
 free -h
-
-echo "Available Memory: $PercentageTotalAvailableSystemMemory%"
 
 #Check the system processes
 
