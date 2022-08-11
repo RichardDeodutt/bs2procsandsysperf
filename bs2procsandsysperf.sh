@@ -163,31 +163,37 @@ KillbyPID(){
     fi
 }
 
+StatusOptions(){
+    Options="$1"
+    #Echo status or options
+    echo $(ColorPrint "Can terminate from the following process list below: " $Red)
+    echo
+    #echo all the options
+    echo "$Options"
+    echo
+    #echo instuctions or helpful info on what to enter
+    echo $(ColorPrint "Select a process using the number on the # column on the leftmost side to terminate it" $Red)
+    echo $(ColorPrint "If the first character of the input is: " $Red)
+    echo $(ColorPrint "'t' change the mode to terminate or 'k' change the mode to kill" $Red)
+    echo $(ColorPrint "'a' terminate or kill all processes, 's' for remaining status/options or 'q' to quit selection" $Red)
+    echo
+}
+
 #Select interactive options to terminate or kill a process
 SelectInteractiveOptions(){
     #Options of processes that are over the threshold and can be terminated or killed
     Options=$(ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | (sed -u 1q; awk -v TP=$AdjustedThresholdPercent '$3 > TP') | nl -v 0 | sed -e '0,/0/ s/0/#/')
     #Mode of t is terminate and k is kill
     Mode='t'
-    #The number of options not counting the header
+    #The total number of options not counting the header
     OptionsCount=$(($(echo "$Options" | wc -l) - 1))
     #Check if there are any options and if there is not then stop
     if [ $OptionsCount -eq $((0)) ]; then
         echo $(ColorPrint "Nothing meets the threshold to terminate" $Green)
         return 0
-    else
-        echo $(ColorPrint "Can terminate from the following process list below: " $Red)
     fi
-    echo
-    #echo all the options
-    echo "$Options"
-    echo
-    #echo instuctions and helpful info on what to enter
-    echo $(ColorPrint "Select a process using the number on the # column on the leftmost side to terminate it" $Red)
-    echo $(ColorPrint "If the first character of the input is: " $Red)
-    echo $(ColorPrint "'t' change the mode to terminate or 'k' change the mode to kill" $Red)
-    echo $(ColorPrint "'a' terminate or kill all processes,  or 'q' to quit selection" $Red)
-    echo
+    #Echo status of options list and instuctions
+    StatusOptions "$Options"
     #infinite loop for input and output with the user
     while :
     do
@@ -214,11 +220,13 @@ SelectInteractiveOptions(){
         SelectionFirstCharacter=$(echo $Selection | cut -c 1)
         #option to change mode to terminate
         if [[ $SelectionFirstCharacter == "t" ]]; then
+            #Change to terminate mode
             echo $(ColorPrint "Terminate Mode" $Green)
             Mode='t'
             continue
         fi
         if [[ $SelectionFirstCharacter == "k" ]]; then
+            #Change to kill mode
             echo $(ColorPrint "Kill Mode" $Green)
             Mode='k'
             continue
@@ -246,32 +254,39 @@ SelectInteractiveOptions(){
             fi
             return 0
         fi
-        #check if input is a number and if it's in the list of processes
-        if [ -n "$Selection" ] && [ "$Selection" -ge "$((1))" ] 2>/dev/null && [ "$Selection" -le "$OptionsCount" ] 2>/dev/null ; then
+        if [[ $SelectionFirstCharacter == "s" ]]; then
+            #Echo status of options list and instuctions
+            StatusOptions "$Options"
+            continue
+        fi
+        #check if input is not empty and if it's found in the list of processes
+        if [ -n "$Selection" ] && [ $(echo "$Options" | awk -v S=$Selection '$1 == S {print "Found"}' | grep -c "Found" > /dev/null 2>&1 ; echo $?) -eq "$((0))" ] 2>/dev/null ; then
             #Selected PID to terminate or kill
-            ProcessID=$(echo "$Options" | sed "$(($Selection + 1))!d" | awk '{print $3}')
+            ProcessID=$(echo "$Options" | awk -v S=$Selection '$1 == S {print $3}')
             #Selected CMD to terminate or kill
-            ProcessCMD=$(echo "$Options" | sed "$(($Selection + 1))!d" | awk '{print $9}')
-
+            ProcessCMD=$(echo "$Options" | awk -v S=$Selection '$1 == S {print $9}')
+            #Terminate or kill selected process
             if [ $Mode == 't' ]; then
-                #Terminate selected process
-                echo $(ColorPrint "Terminating All Processes" $Green)
-                
+                #Telling user what is about to be terminated
+                echo $(ColorPrint "Terminating process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+                #Terminate process by ID
+                TerminatebyPID $ProcessID
             elif [ $Mode == 'k' ]; then
-                #Kill selected process
-                echo $(ColorPrint "Killing All Processes" $Green)
-
+                #Telling user what is about to be killed
+                echo $(ColorPrint "Killing process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+                #Kill process by ID
+                KillbyPID $ProcessID
             else
                 #Default terminate selected process
                 Mode='t'
-                echo $(ColorPrint "Terminating All Processes" $Green)
-
+                #Telling user what is about to be terminated
+                echo $(ColorPrint "Terminating process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+                #Terminate process by ID
+                TerminatebyPID $ProcessID
             fi
-
-            #Telling user what is about to be terminated or killed
-            echo $(ColorPrint "Executing process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
-            TerminatebyPID $ProcessID
-            Options=$(echo "$Options" | sed "$(($Selection + 1))d")
+            #Remove terminated or killed option from list
+            Options=$(echo "$Options" | awk -v S=$Selection '$1 != S {print}')
+            #Update the total number of options not counting the header
             OptionsCount=$(($(echo "$Options" | wc -l) - 1))
         else
             #everything else is invalid input and warn the user
