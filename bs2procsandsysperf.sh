@@ -3,7 +3,7 @@
 #Richard Deodutt
 #08/06/2022
 #This script is meant to monitor processes and system performance. It will be able to show the system's state and processes using over a certain ammount of system memory and allow the user to terminate them. 
-#Script issues go here
+#The Base Threshold Percent which is the ThresholdPercent variable can be changed in the script if you want to raise or lower the memory usage threshold that needs to be passed by a process to be listed. If you lower it all the way to 0 it would list all the processes that use more than 0 percent memory which includes this script itself, and the bash terminal running this script. This means it is possible to break the script by selecting this script from the processes list to terminate or kill. You can also kill the bash terminal running this script. It also has the issue of listing processes that only existed when it was checked but may not be running anymore such as the ps command this script uses itself, this can also happen outside of running at the 0 threshold percent depending on your circumstances because it only runs the ps command once and uses that information until refreshed or restarted but the information may change the next second so it may fail to terminate or kill a processes due to the process ending another way already. The last issue shouldn't break the script as those processes are not running which is what we want, it would just print a error message that terminating or kill the process didn't work. 
 
 
 
@@ -25,7 +25,7 @@ CodeYellow=$((50))
 #25% and below, can change but must be less than Yellow
 CodeRed=$((25))
 
-#Threshold percent, can change to directly change the base threshold for selection
+#Threshold percent, can change to directly change the base threshold for selection, running it at 0 causes issues
 ThresholdPercent=$((20))
 #Adjusted threshold percent, don't change as it self calculates it's own value
 AdjustedThresholdPercent=$((20))
@@ -249,6 +249,11 @@ SelectInteractiveOptions(){
             Mode='t'
             #The total number of options not counting the header
             OptionsCount=$(($(echo "$Options" | wc -l) - 1))
+            #Check if there are any options and if there is not then stop
+            if [ $OptionsCount -eq $((0)) ]; then
+                echo $(ColorPrint "Nothing meets the threshold to terminate" $Green)
+                return 0
+            fi
             #Echo status of options list and instuctions
             StatusOptions "$Options"
             continue
