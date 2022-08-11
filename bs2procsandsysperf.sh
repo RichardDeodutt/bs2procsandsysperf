@@ -125,24 +125,6 @@ PrintSystemMemoryStatus(){
     echo "Code Color: $(ColorPrint $Code $ColorCode) | Multiplier: $Multiplier | Threshold Percent: $ThresholdPercent % | Adjusted Threshold Percent: $AdjustedThresholdPercent %"
 }
 
-#Terminate a process using the process id
-TerminatebyPID(){
-    #Takes in the process id as the first argument
-    PID=$1
-    #Terminate command with no output
-    kill $PID > /dev/null 2>&1
-    #Check if the command has a error
-    if [ $? -eq 0 ]; then
-        #Command worked
-        echo $(ColorPrint "Terminated" $Green)
-        return 0
-    else
-        #Command did not work
-        echo $(ColorPrint "Something went wrong with terminating the process" $Red)
-        return 1
-    fi
-}
-
 #Kill a process using the process id
 KillbyPID(){
     #Takes in the process id as the first argument
@@ -158,6 +140,25 @@ KillbyPID(){
         #Command did not work
         echo $(ColorPrint "Something went wrong with killing the process" $Red)
         return 1
+    fi
+}
+
+#Terminate a process using the process id
+TerminatebyPID(){
+    #Takes in the process id as the first argument
+    PID=$1
+    #Terminate command with no output
+    kill $PID > /dev/null 2>&1
+    #Check if the command has a error
+    if [ $? -eq 0 ]; then
+        #Command worked
+        echo $(ColorPrint "Terminated" $Green)
+        return 0
+    else
+        #Command did not work, try to kill instead as it might be unresponsive
+        echo $(ColorPrint "Something went wrong with terminating the process, attempting to kill" $Red)
+        KillbyPID $PID
+        return $?
     fi
 }
 
