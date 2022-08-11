@@ -241,16 +241,46 @@ SelectInteractiveOptions(){
             if [ $Mode == 't' ]; then
                 #Terminate all processes
                 echo $(ColorPrint "Terminating All Processes" $Green)
-                
+                #Go through the whole process list
+                for ((i=1;i<=OptionsCount;i++)); do
+                    #Selected PID to terminate
+                    ProcessID=$(echo "$Options" | awk -v S=$i '$1 == S {print $3}')
+                    #Selected CMD to terminate
+                    ProcessCMD=$(echo "$Options" | awk -v S=$i '$1 == S {print $9}')
+                    #Telling user what is about to be terminated
+                    echo $(ColorPrint "Terminating process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+                    #Terminate process by ID
+                    TerminatebyPID $ProcessID
+                done
             elif [ $Mode == 'k' ]; then
                 #Kill all processes
                 echo $(ColorPrint "Killing All Processes" $Green)
-
+                #Go through the whole process list
+                for ((i=1;i<=OptionsCount;i++)); do
+                    #Selected PID to kill
+                    ProcessID=$(echo "$Options" | awk -v S=$i '$1 == S {print $3}')
+                    #Selected CMD to kill
+                    ProcessCMD=$(echo "$Options" | awk -v S=$i '$1 == S {print $9}')
+                    #Telling user what is about to be killed
+                    echo $(ColorPrint "Killing process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+                    #Kill process by ID
+                    KillbyPID $ProcessID
+                done
             else
                 #Default terminate all processes
                 Mode='t'
                 echo $(ColorPrint "Terminating All Processes" $Green)
-
+                #Go through the whole process list
+                for ((i=1;i<=OptionsCount;i++)); do
+                    #Selected PID to terminate
+                    ProcessID=$(echo "$Options" | awk -v S=$i '$1 == S {print $3}')
+                    #Selected CMD to terminate
+                    ProcessCMD=$(echo "$Options" | awk -v S=$i '$1 == S {print $9}')
+                    #Telling user what is about to be terminated
+                    echo $(ColorPrint "Terminating process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+                    #Terminate process by ID
+                    TerminatebyPID $ProcessID
+                done
             fi
             return 0
         fi
