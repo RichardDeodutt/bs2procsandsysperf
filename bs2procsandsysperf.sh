@@ -309,17 +309,3 @@ SelectInteractiveOptions
 #Script exiting
 echo $(ColorPrint "Script Successfully ran" $Green)
 exit 0
-
-
-
-#ps aux | (sed -u 1q; sort -rnk +4) | nl -v 0 | sed -e '0,/0/ s/0/#/'
-
-#ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem
-
-#ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | awk '$3 > 0'
-
-
-
-#ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | (sed -u 1q; awk -v TP=$AdjustedThresholdPercent '$3 > TP') | nl -v 0 | sed -e '0,/0/ s/0/#/'
-
-#ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | (sed -u 1q; awk -v TP=$ThresholdPercent '$3 > $TP') | nl -v 0 | sed -e '0,/0/ s/0/#/'
