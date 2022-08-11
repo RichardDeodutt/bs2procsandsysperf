@@ -162,7 +162,9 @@ TerminatebyPID(){
     fi
 }
 
+#Echos the status or options and instructions
 StatusOptions(){
+    #Takes in the options as the first argument
     Options="$1"
     #Echo status or options
     echo $(ColorPrint "Can terminate from the following process list below: " $Red)
