@@ -172,7 +172,7 @@ StatusOptions(){
     #echo instuctions or helpful info on what to enter
     echo $(ColorPrint "Select a process using the number on the # column on the leftmost side to terminate it" $Red)
     echo $(ColorPrint "If the first character of the input is: " $Red)
-    echo $(ColorPrint "'t' change the mode to terminate or 'k' change the mode to kill" $Red)
+    echo $(ColorPrint "'t' change the mode to terminate, 'k' change the mode to kill or 'r' to refresh/restart everything" $Red)
     echo $(ColorPrint "'a' terminate or kill all processes, 's' for remaining status/options or 'q' to quit selection" $Red)
     echo
 }
@@ -233,6 +233,22 @@ SelectInteractiveOptions(){
         if [[ $SelectionFirstCharacter == "q" ]]; then
             echo $(ColorPrint "Quiting" $Green)
             return 0
+        fi
+        if [[ $SelectionFirstCharacter == "r" ]]; then
+            #Refresh or restart everything
+            #Update the system memory state
+            UpdateSystemMemoryState
+            #Print the system memory state
+            PrintSystemMemoryStatus
+            #Options of processes that are over the threshold and can be terminated or killed
+            Options=$(ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | (sed -u 1q; awk -v TP=$AdjustedThresholdPercent '$3 > TP') | nl -v 0 | sed -e '0,/0/ s/0/#/')
+            #Mode of t is terminate and k is kill
+            Mode='t'
+            #The total number of options not counting the header
+            OptionsCount=$(($(echo "$Options" | wc -l) - 1))
+            #Echo status of options list and instuctions
+            StatusOptions "$Options"
+            continue
         fi
         #option a to kill or terminate all listed processes
         if [[ $SelectionFirstCharacter == "a" ]]; then
