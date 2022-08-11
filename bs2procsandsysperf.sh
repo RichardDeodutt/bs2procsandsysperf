@@ -7,28 +7,30 @@
 
 
 
-#Units
+#Units, don't change
 BinaryKilo=$((1024))
 
-#Color output
+#Color output, don't change
 Red='\033[0;31m'
 Green='\033[0;32m'
 Yellow='\033[0;33m'
-#No color output
+#No color output, don't change
 NC='\033[0m'
 
 #Color code thresholds
-#100% and below
+#100% and below, should not change
 CodeGreen=$((100))
-#50% and below
+#50% and below, can change but must be less than Geen and more than Red
 CodeYellow=$((50))
-#25% and below
+#25% and below, can change but must be less than Yellow
 CodeRed=$((25))
 
+#Threshold percent, can change to directly change the base threshold for selection
 ThresholdPercent=$((20))
+#Adjusted threshold percent, don't change as it self calculates it's own value
 AdjustedThresholdPercent=$((20))
 
-#State of the system's memory
+#State of the system's memory, don't change
 TotalSystemMemoryKB=0
 TotalAvailableSystemMemoryKB=0
 PercentageTotalAvailableSystemMemory=0
@@ -125,26 +127,157 @@ PrintSystemMemoryStatus(){
     echo "Code Color: $(ColorPrint $Code $ColorCode) | Multiplier: $Multiplier | Threshold Percent: $ThresholdPercent % | Adjusted Threshold Percent: $AdjustedThresholdPercent %"
 }
 
-SelectTerminations(){
-    Options=$(ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | (sed -u 1q; awk -v TP=$AdjustedThresholdPercent '$3 > TP') | nl -v 0 | sed -e '0,/0/ s/0/#/')
-    OptionsCount=$(($(echo "$Options" | wc -l) - 1))
-    if [ $OptionsCount -eq $((0)) ]; then
-        echo "No Options"
-        return
+#Terminate a process using the process id
+TerminatebyPID(){
+    #Takes in the process id as the first argument
+    PID=$1
+    #Terminate command with no output
+    kill $PID > /dev/null 2>&1
+    #Check if the command has a error
+    if [ $? -eq 0 ]; then
+        #Command worked
+        echo $(ColorPrint "Terminated" $Green)
+        return 0
+    else
+        #Command did not work
+        echo $(ColorPrint "Something went wrong with terminating the process" $Red)
+        return 1
     fi
-    echo $OptionsCount
+}
+
+#Kill a process using the process id
+KillbyPID(){
+    #Takes in the process id as the first argument
+    PID=$1
+    #Kill command with no output
+    kill -9 $PID > /dev/null 2>&1
+    #Check if the command has a error
+    if [ $? -eq 0 ]; then
+        #Command worked
+        echo $(ColorPrint "Killed" $Green)
+        return 0
+    else
+        #Command did not work
+        echo $(ColorPrint "Something went wrong with killing the process" $Red)
+        return 1
+    fi
+}
+
+#Select interactive options to terminate or kill a process
+SelectInteractiveOptions(){
+    #Options of processes that are over the threshold and can be terminated or killed
+    Options=$(ps -eo user,pid,%mem,rss,stat,start,time,command --sort=-%mem | (sed -u 1q; awk -v TP=$AdjustedThresholdPercent '$3 > TP') | nl -v 0 | sed -e '0,/0/ s/0/#/')
+    #Mode of t is terminate and k is kill
+    Mode='t'
+    #The number of options not counting the header
+    OptionsCount=$(($(echo "$Options" | wc -l) - 1))
+    #Check if there are any options and if there is not then stop
+    if [ $OptionsCount -eq $((0)) ]; then
+        echo $(ColorPrint "Nothing meets the threshold to terminate" $Green)
+        return 0
+    else
+        echo $(ColorPrint "Can terminate from the following process list below: " $Red)
+    fi
     echo
-    echo "Process List Below: "
-    echo
+    #echo all the options
     echo "$Options"
     echo
-    echo "Select processes using the number on the # column on the leftmost side to terminate or enter q to quit"
+    #echo instuctions and helpful info on what to enter
+    echo $(ColorPrint "Select a process using the number on the # column on the leftmost side to terminate it" $Red)
+    echo $(ColorPrint "If the first character of the input is: " $Red)
+    echo $(ColorPrint "'t' change the mode to terminate or 'k' change the mode to kill" $Red)
+    echo $(ColorPrint "'a' terminate or kill all processes,  or 'q' to quit selection" $Red)
     echo
-    read -p "Term #> " Selection
-    if [[ $Selection == "q" ]]; then
-        echo "Quiting"
-        exit 0
-    fi
+    #infinite loop for input and output with the user
+    while :
+    do
+        #Check if there are any more options and if there is not then stop
+        if [ $OptionsCount -eq $((0)) ]; then
+            echo $(ColorPrint "Nothing else meets the threshold to terminate" $Green)
+            return 0
+        fi
+        #get the user input and show mode
+        if [ $Mode == 't' ]; then
+            #Terminate mode
+            read -p "Term #> " Selection
+        elif [ $Mode == 'k' ]; then
+            #Kill mode
+            read -p "Kill #> " Selection
+        else
+            #Default terminate mode
+            Mode='t'
+            read -p "Term #> " Selection
+        fi
+        #lower case the input
+        Selection=$(echo $Selection | tr [:upper:] [:lower:])
+        #get the first character of the user input
+        SelectionFirstCharacter=$(echo $Selection | cut -c 1)
+        #option to change mode to terminate
+        if [[ $SelectionFirstCharacter == "t" ]]; then
+            echo $(ColorPrint "Terminate Mode" $Green)
+            Mode='t'
+            continue
+        fi
+        if [[ $SelectionFirstCharacter == "k" ]]; then
+            echo $(ColorPrint "Kill Mode" $Green)
+            Mode='k'
+            continue
+        fi
+        #option q to quit
+        if [[ $SelectionFirstCharacter == "q" ]]; then
+            echo $(ColorPrint "Quiting" $Green)
+            return 0
+        fi
+        #option a to kill or terminate all listed processes
+        if [[ $SelectionFirstCharacter == "a" ]]; then
+            if [ $Mode == 't' ]; then
+                #Terminate all processes
+                echo $(ColorPrint "Terminating All Processes" $Green)
+                
+            elif [ $Mode == 'k' ]; then
+                #Kill all processes
+                echo $(ColorPrint "Killing All Processes" $Green)
+
+            else
+                #Default terminate all processes
+                Mode='t'
+                echo $(ColorPrint "Terminating All Processes" $Green)
+
+            fi
+            return 0
+        fi
+        #check if input is a number and if it's in the list of processes
+        if [ -n "$Selection" ] && [ "$Selection" -ge "$((1))" ] 2>/dev/null && [ "$Selection" -le "$OptionsCount" ] 2>/dev/null ; then
+            #Selected PID to terminate or kill
+            ProcessID=$(echo "$Options" | sed "$(($Selection + 1))!d" | awk '{print $3}')
+            #Selected CMD to terminate or kill
+            ProcessCMD=$(echo "$Options" | sed "$(($Selection + 1))!d" | awk '{print $9}')
+
+            if [ $Mode == 't' ]; then
+                #Terminate selected process
+                echo $(ColorPrint "Terminating All Processes" $Green)
+                
+            elif [ $Mode == 'k' ]; then
+                #Kill selected process
+                echo $(ColorPrint "Killing All Processes" $Green)
+
+            else
+                #Default terminate selected process
+                Mode='t'
+                echo $(ColorPrint "Terminating All Processes" $Green)
+
+            fi
+
+            #Telling user what is about to be terminated or killed
+            echo $(ColorPrint "Executing process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+            TerminatebyPID $ProcessID
+            Options=$(echo "$Options" | sed "$(($Selection + 1))d")
+            OptionsCount=$(($(echo "$Options" | wc -l) - 1))
+        else
+            #everything else is invalid input and warn the user
+            echo $(ColorPrint "Input was invalid try again or enter q to quit" $Yellow)
+        fi
+    done
 }
 
 #Checking the system memory situation
@@ -155,10 +288,12 @@ UpdateSystemMemoryState
 #Print the system memory state
 PrintSystemMemoryStatus
 
-#Check the system processes
-SelectTerminations
+#Select the system processes to termination or kill
+SelectInteractiveOptions
 
-
+#Script exiting
+echo $(ColorPrint "Script Successfully ran" $Green)
+exit 0
 
 
 
