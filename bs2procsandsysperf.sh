@@ -73,11 +73,9 @@ KBtoHumanReadable(){
 #Function to update the state of the systems memory and store it
 UpdateSystemMemoryState(){
     #Total memory for the system in KB numbers only
-    #TotalSystemMemoryKB=$(echo $(grep MemTotal /proc/meminfo | sed 's/[^0-9]*//g'))
-    TotalSystemMemoryKB=100
+    TotalSystemMemoryKB=$(echo $(grep MemTotal /proc/meminfo | sed 's/[^0-9]*//g'))
     #Total available memory for the system in KB numbers only
-    #TotalAvailableSystemMemoryKB=$(echo $(grep MemAvailable: /proc/meminfo | sed 's/[^0-9]*//g'))
-    TotalAvailableSystemMemoryKB=100
+    TotalAvailableSystemMemoryKB=$(echo $(grep MemAvailable: /proc/meminfo | sed 's/[^0-9]*//g'))
     #Percentage of total available memory for the system rounded
     PercentageTotalAvailableSystemMemory=$(printf '%.*f\n' 1 $(echo "$TotalAvailableSystemMemoryKB / $TotalSystemMemoryKB * 100" | bc -l))
     #Percentage of total used memory for the system rounded
@@ -248,7 +246,7 @@ SelectInteractiveOptions(){
                     #Selected CMD to terminate
                     ProcessCMD=$(echo "$Options" | awk -v S=$i '$1 == S {print $9}')
                     #Telling user what is about to be terminated
-                    echo $(ColorPrint "Terminating process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+                    echo $(ColorPrint "Terminating process #$i '$ProcessCMD' with PID: '$ProcessID'" $Green)
                     #Terminate process by ID
                     TerminatebyPID $ProcessID
                 done
@@ -262,7 +260,7 @@ SelectInteractiveOptions(){
                     #Selected CMD to kill
                     ProcessCMD=$(echo "$Options" | awk -v S=$i '$1 == S {print $9}')
                     #Telling user what is about to be killed
-                    echo $(ColorPrint "Killing process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+                    echo $(ColorPrint "Killing process #$i '$ProcessCMD' with PID: '$ProcessID'" $Green)
                     #Kill process by ID
                     KillbyPID $ProcessID
                 done
@@ -277,7 +275,7 @@ SelectInteractiveOptions(){
                     #Selected CMD to terminate
                     ProcessCMD=$(echo "$Options" | awk -v S=$i '$1 == S {print $9}')
                     #Telling user what is about to be terminated
-                    echo $(ColorPrint "Terminating process #$Selection '$ProcessCMD' with PID: '$ProcessID'" $Green)
+                    echo $(ColorPrint "Terminating process #$i '$ProcessCMD' with PID: '$ProcessID'" $Green)
                     #Terminate process by ID
                     TerminatebyPID $ProcessID
                 done
@@ -325,7 +323,11 @@ SelectInteractiveOptions(){
     done
 }
 
-#Checking the system memory situation
+
+
+#main part of the script
+
+
 
 #Update the system memory state
 UpdateSystemMemoryState
